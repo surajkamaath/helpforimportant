@@ -1,0 +1,225 @@
+🔹 Step 1: Install Required Tools
+1. Install Java (JDK 11+)
+Download from Oracle/OpenJDK
+Set environment variables:
+JAVA_HOME = C:\Program Files\Java\jdk-25.0.2
+PATH → %JAVA_HOME%\bin
+2. Install Apache Maven
+Extract to:
+C:\apache-maven-3.9.15
+Set:
+MAVEN_HOME = C:\apache-maven-3.9.15
+PATH → %MAVEN_HOME%\bin
+3. Verify Installation
+java -version
+mvn -version
+🔹 Step 2: Create Maven Project
+
+In VS Code:
+
+Ctrl + Shift + P
+Java: Create Java Project
+Select:
+Maven
+Archetype → maven-archetype-quickstart
+Version → 1.4 or latest
+Enter:
+Group Id: com.example
+Artifact Id: demo
+Version: 1.0-SNAPSHOT
+🔹 Step 3: Fix Java Version (IMPORTANT)
+
+Open pom.xml
+
+❌ Default (causes error)
+<maven.compiler.source>1.7</maven.compiler.source>
+<maven.compiler.target>1.7</maven.compiler.target>
+✅ Replace with:
+<properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <maven.compiler.source>11</maven.compiler.source>
+    <maven.compiler.target>11</maven.compiler.target>
+</properties>
+🔹 Step 4: Push to GitHub
+
+Using GitHub
+
+git init
+git add .
+git commit -m "Initial commit"
+git branch -M main
+git remote add origin https://github.com/your-username/demo.git
+git push -u origin main
+🔹 Step 5: Add CI/CD Pipeline (GitHub Actions)
+
+Create:
+
+.github/workflows/maven.yml
+📄 maven.yml
+name: Java CI/CD Pipeline
+
+on:
+  push:
+    branches: ["main"]
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '11'
+
+      - name: Build using Maven
+        run: mvn clean install
+🔹 Step 6: Push Again
+git add .
+git commit -m "Added CI/CD"
+git push
+🔹 Step 7: Verify
+
+Go to GitHub → Actions tab
+
+👉 You should see:
+
+Build running
+Build success ✅
+⚙️ C2: Jenkins + Slack Notification
+🔹 Step 1: Install Plugins in Jenkins
+Pipeline Plugin
+Git Plugin
+Maven Integration Plugin
+Slack Notification Plugin
+🔹 Step 2: Configure Maven in Jenkins
+
+👉 Manage Jenkins → Tools
+
+Name: Maven3
+MAVEN_HOME: C:\apache-maven-3.9.15
+
+✔ Uncheck auto-install
+
+🔹 Step 3: Create Jenkinsfile
+
+📄 Jenkinsfile
+
+pipeline {
+    agent any
+
+    tools {
+        maven 'Maven3'
+    }
+
+    stages {
+
+        stage('Build') {
+            steps {
+                bat 'mvn clean install'
+            }
+        }
+
+        stage('Test') {
+            steps {
+                bat 'mvn test'
+            }
+        }
+    }
+}
+🔹 Step 4: Push Jenkinsfile
+git add Jenkinsfile
+git commit -m "Added Jenkinsfile"
+git push
+🔹 Step 5: Create Pipeline Job
+
+In Jenkins:
+
+New Item → Pipeline
+Pipeline from SCM
+Git repo → your repo
+Branch → main
+Script → Jenkinsfile
+
+👉 Click Build Now
+
+🔹 Step 6: Slack Integration
+
+Using Slack
+
+Get Token
+
+Go to:
+
+https://my.slack.com/services/new/jenkins-ci
+
+Copy token:
+
+xoxb-xxxx OR similar
+Configure in Jenkins
+
+👉 Manage Jenkins → System → Slack
+
+Workspace: jenkins-lab-world
+Credential → Secret Text
+Secret: (your token)
+ID: slack-token
+Channel: #new-channel
+🔹 Step 7: Freestyle Job
+New Item → Freestyle Project
+Build Step:
+echo Jenkins
+Post-build:
+
+✔ Slack Notification (all options)
+
+👉 Build Now
+
+🔹 Step 8: Verify Slack
+
+Check Slack channel:
+
+#new-channel
+
+👉 You should see:
+
+Build started
+Build success
+❗ ERRORS YOU FACED + FIXES
+❌ 1. Maven path confusion
+
+👉 Used JDK path instead of Maven
+✔ Fix: Use Maven home from mvn -version
+
+❌ 2. Jenkins branch error
+Couldn't find revision master
+
+✔ Fix: Change branch → main
+
+❌ 3. Double checkout error
+
+✔ Fix: Remove CHECKOUT stage from Jenkinsfile
+
+❌ 4. Java version error
+Source option 7 not supported
+
+✔ Fix: Set Java 11 in pom.xml
+
+❌ 5. Wrong pom.xml placement
+
+✔ Fix: Only ONE <properties> block inside <project>
+
+❌ 6. Slack token error
+credential ID not found
+
+✔ Fix:
+
+Add Secret Text
+SELECT it from dropdown
+❌ 7. Slack integration limit
+
+✔ Fix:
+
+Create new workspace OR remove old integration
