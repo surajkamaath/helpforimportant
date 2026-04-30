@@ -1,95 +1,92 @@
-B1: Create Docker Image and Run Application
-🎯 Aim
-
-To create a Docker image from a local Python application and run it using a Docker container.
-
-🧰 Tools Required
-Docker Desktop
-Python (optional, for writing app)
-Command Prompt / Terminal
-📁 Project Structure
-myapp/
-│── app.py
-│── Dockerfile
-🧩 Step 1: Install Docker
+1. Install Docker
 Download Docker Desktop
-Install and run as Administrator
-Verify installation:
+Install and start it
+Verify:
 docker --version
-⚠️ Problem Faced
-DockerDesktop must be owned by an elevated account
-✔ Solution
-Delete folder:
-C:\ProgramData\DockerDesktop
-Reinstall Docker as Administrator
-🧩 Step 2: Create Python Application
-📄 app.py
-print("Hello from Docker 🚀")
-🧩 Step 3: Create Dockerfile
-📄 Dockerfile
-FROM python:3.10-slim
-WORKDIR /app
-COPY . .
-CMD ["python", "app.py"]
-🧩 Step 4: Build Docker Image
+2. Install Jenkins
+Install Jenkins (via WAR or installer)
+Open:
+http://localhost:8080
+3. Install Required Jenkins Plugins
 
-Open terminal in project folder:
+Go to:
 
-docker build -t myapp .
-⚠️ Problem Faced
-docker not recognized
-✔ Solution
-Restart system
-Ensure Docker Desktop is running
-🧩 Step 5: Verify Image
-docker images
+Manage Jenkins → Plugins
 
-Expected:
+Install:
 
-myapp   latest
-🧩 Step 6: Run Docker Container
-docker run myapp
-✅ Output
-Hello from Docker 🚀
+Pipeline
+Git
+Credentials Binding
+📁 STEP 2: Create Project
+mkdir my-nginx-site
+cd my-nginx-site
+🌐 STEP 3: Create Static Website
+📄 index.html
+<!DOCTYPE html>
+<html>
+<head>
+    <title>My Nginx Site</title>
+</head>
+<body>
+    <h1>Hello from Nginx Docker 🚀</h1>
+</body>
+</html>
+🐳 STEP 4: Create Dockerfile
+FROM nginx:alpine
 
+# Clean default content
+RUN rm -rf /usr/share/nginx/html/*
 
-☁️ STEP 4: Push Image to Docker Hub
-🔹 Login
-docker login -u surajkamathh
+# Copy website
+COPY . /usr/share/nginx/html
 
-👉 Use Access Token (NOT password)
+# Expose port
+EXPOSE 80
 
-🔹 Tag image
-docker tag myapp surajkamathh/myapp:v1
-🔹 Push image
-docker push surajkamathh/myapp:v1
-⚠️ Problems faced
-Issue	Fix
-Wrong push command	Use correct format
-Password not working	Use Access Token
-Token error	Regenerate token
-🌐 STEP 5: Push Code to GitHub
+CMD ["nginx", "-g", "daemon off;"]
+🔧 STEP 5: Test Locally (IMPORTANT)
+Build image
+docker build -t nginx-site .
+Run container
+docker run -d -p 8081:80 nginx-site
+Open browser:
+http://localhost:8081
+
+✔ If this doesn’t work, Jenkins pipeline will also fail—so fix here first.
+
+☁️ STEP 6: Push to Docker Hub (Manual First)
+Login
+docker login -u yourusername
+
+👉 Use Access Token, not password
+
+Tag image
+docker tag nginx-site yourusername/nginx-site:v1
+Push
+docker push yourusername/nginx-site:v1
+🌍 STEP 7: Push Code to GitHub
 git init
 git add .
 git commit -m "initial commit"
 git branch -M main
-git remote add origin https://github.com/yourusername/repo.git
+git remote add origin https://github.com/yourusername/nginx-site.git
 git push -u origin main
-⚙️ STEP 6: Add Jenkinsfile
-📄 Create Jenkinsfile
+⚙️ STEP 8: Create Jenkinsfile
+📄 Jenkinsfile
 pipeline {
     agent any
 
     environment {
-        IMAGE_NAME = "surajkamathh/myapp"
+        IMAGE_NAME = "yourusername/nginx-site"
         IMAGE_TAG = "v1"
     }
 
     stages {
 
-        stage('Docker Check') {
+        stage('Check Docker') {
             steps {
-                bat "docker --version"
+                sh 'docker --version'
             }
         }
 
@@ -100,40 +97,38 @@ pipeline {
                     usernameVariable: 'DOCKER_USER',
                     passwordVariable: 'DOCKER_TOKEN'
                 )]) {
-                    bat '''
+                    sh '''
                     docker logout
-                    docker login -u %DOCKER_USER% -p %DOCKER_TOKEN%
+                    echo $DOCKER_TOKEN | docker login -u $DOCKER_USER --password-stdin
                     '''
                 }
             }
         }
 
-        stage('Build Docker Image') {
+        stage('Build Image') {
             steps {
-                bat "docker build -t %IMAGE_NAME%:%IMAGE_TAG% ."
+                sh 'docker build -t $IMAGE_NAME:$IMAGE_TAG .'
             }
         }
 
-        stage('Push Docker Image') {
+        stage('Push Image') {
             steps {
-                bat "docker push %IMAGE_NAME%:%IMAGE_TAG%"
+                sh 'docker push $IMAGE_NAME:$IMAGE_TAG'
+            }
+        }
+
+        stage('Run Container') {
+            steps {
+                sh '''
+                docker stop nginx-site || true
+                docker rm nginx-site || true
+                docker run -d -p 8081:80 --name nginx-site $IMAGE_NAME:$IMAGE_TAG
+                '''
             }
         }
     }
 }
-🔹 Push Jenkinsfile
-git add Jenkinsfile
-git commit -m "added pipeline"
-git push
-⚙️ STEP 7: Setup Jenkins
-🔹 Create Pipeline Job
-Jenkins → New Item → Pipeline
-🔹 Configure
-Pipeline script from SCM
-Git repo URL
-Script path:
-Jenkinsfile
-🔐 STEP 8: Add Docker Credentials in Jenkins
+🔐 STEP 9: Add Docker Credentials in Jenkins
 
 Go to:
 
@@ -141,47 +136,40 @@ Manage Jenkins → Credentials
 
 Add:
 
-Kind: Username with password
-Username: surajkamathh
+Kind: Username with Password
+Username: Docker Hub username
 Password: Docker Access Token
-ID:
-dockerhub-creds
-⚠️ Problems faced
-Issue	Fix
-Credentials not found	ID mismatch
-Login failed	Wrong token
-Token stdin issue	Use -p
-🌍 STEP 9: Setup ngrok
-ngrok http 8080
+ID: dockerhub-creds
+🏗 STEP 10: Create Jenkins Pipeline Job
+Open Jenkins
+Click New Item
+Select Pipeline
+Name: nginx-pipeline
+Configure:
+Pipeline → Pipeline script from SCM
+SCM: Git
+Repo URL: your GitHub repo
+Branch: main
+Script Path: Jenkinsfile
+▶️ STEP 11: Run Pipeline
 
-You get:
+Click:
 
-https://your-ngrok-url
-🔗 STEP 10: Add GitHub Webhook
+Build Now
+Expected stages:
 
-Go to GitHub → Settings → Webhooks
+✔ Docker check
+✔ Login
+✔ Build image
+✔ Push image
+✔ Run container
 
-Add:
+🌐 STEP 12: Access Website
 
-Payload URL:
-https://your-ngrok-url/github-webhook/
-Content type:
-application/json
-⚙️ STEP 11: Enable Jenkins Trigger
+Open browser:
 
-In Jenkins job:
+http://localhost:8081
 
-Enable:
+OR (if Jenkins is on another machine):
 
-GitHub hook trigger for GITScm polling
-🧪 STEP 12: Test Pipeline
-
-Modify app.py:
-
-print("Webhook test successful 🚀🔥")
-🔹 Push change
-git add .
-git commit -m "webhook test"
-git push
-✅ FINAL RESULT
-Git Push → GitHub → Webhook → Jenkins → Docker Build → Docker Hub Push
+http://<JENKINS_IP>:8081
